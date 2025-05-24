@@ -1,0 +1,873 @@
+
+<button onclick="abrirModalTarifa()">📄 Gerar Relatório PDF</button>
+<button onclick="abrirFormularioEconomia()" style="margin-top: 10px; background-color:#17a2b8;">
+  📉 Simular Economia com Tomada Inteligente
+</button>
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagrama de Carga</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f0f0f0; padding: 20px; }
+    .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    input, select, button { padding: 10px; margin: 5px 0; width: 100%; border: 1px solid #ddd; border-radius: 4px; }
+    button { background-color: #28a745; color: white; cursor: pointer; }
+    button:hover { background-color: #218838; }
+    .equipamentos { margin-top: 20px; }
+    .equipamento-item { padding: 10px; border-bottom: 1px solid #ddd; }
+    .icons-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .help-icon, .pdf-icon { font-size: 24px; cursor: pointer; color: #333; }
+    .pdf-icon { background-color: black; color: white; padding: 5px 10px; border-radius: 5px; font-size: 16px; text-decoration: none; }
+    .pdf-icon:hover { background-color: #444; }
+    .botao-graficos {
+      position: fixed; bottom: 20px; right: 20px; background-color: #007bff; color: white;
+      padding: 10px; border-radius: 50%; font-size: 14px; border: none; cursor: pointer;
+      width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+      
+      .graficos-container.force-visible {
+  display: block !important;
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 1000px;
+  height: auto;
+  z-index: -9999;
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+    }
+    
+    
+    .botao-graficos:hover { background-color: #0056b3; }
+    .graficos-container {
+      display: none; position: fixed; bottom: 80px; right: 20px; background-color: white;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); padding: 20px; border-radius: 5px;
+      width: 420px; max-height: 500px; overflow-y: auto; z-index: 1000;
+    }
+    .graficos-container canvas {
+      display: block; width: 100%; min-height: 180px; margin-bottom: 15px;
+    }
+    /* Estilo do botão Zerar Tudo */
+    .botao-zerar {
+      position: fixed;
+      bottom: 20px;
+      left: 10%;
+      transform: translateX(-50%);
+      background-color: #dc3545;
+      color: white;
+      padding: 10px 25px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      z-index: 1000;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      width: auto;
+      max-width: 200px;
+      margin: 0 auto;
+    }
+    .botao-zerar:hover {
+      background-color: #c82333;
+    }
+    
+    /* Ajuste para garantir que os gráficos não sejam cobertos */
+    canvas {
+      margin-bottom: 20px;
+    }
+    
+  </style>
+</head>
+<body>
+  <div id="modalTarifa" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:white; padding:20px; border:1px solid #ccc; border-radius:8px; width:90%; max-width:400px; z-index:1001; box-shadow:0 0 10px rgba(0,0,0,0.2);">
+  <h3>Configurações de Tarifa</h3>
+
+  <label for="selectPais">Escolha o país:</label>
+  <select id="selectPais" onchange="atualizarOpcoesPotencia()">
+    <option value="brasil">Brasil</option>
+    <option value="portugal">Portugal</option>
+  </select>
+
+  <div id="divPotencia" style="display:none; margin-top: 10px;">
+    <label for="selectPotencia">Potência contratada (Portugal):</label>
+    <select id="selectPotencia">
+      <option value= "classe abaixo de 20,7Kva">sem potencia contratada fixa</option>
+      <option value= "1.15">1.15</option>
+      <option value="2.3">2.3</option>
+      <option value="3.45">3.45</option>
+      <option value="4.6">4.6</option>
+      <option value="5.75">5.75</option>
+      <option value="10.35">10.35</option>
+      <option value="13.8">13.8</option>
+      <option value="17.25">17.25</option>
+      <option value="20.7">20.7</option>
+    </select>
+  </div>
+
+  <button onclick="confirmarTarifa()" style="margin-top:15px; background-color:#28a745;">Confirmar</button>
+  <button onclick="fecharModalTarifa()" style="background-color:#ccc; color:black; margin-top:10px;">Cancelar</button>
+</div>
+  <div id="formularioEconomiaModal" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:white; padding:20px; border:1px solid #ccc; border-radius:8px; width:90%; max-width:500px; z-index:1001; box-shadow:0 0 10px rgba(0,0,0,0.2);">
+  <h3>Simulador de Economia</h3>
+  
+  <label for="consumoConta">Consumo Mensal da Conta (kWh):</label>
+  <input type="number" id="consumoConta" placeholder="Ex: 220">
+
+  <p><strong>Equipamentos com consumo em standby:</strong></p>
+  <div id="listaStandbyEquipamentos">
+    <!-- Será preenchido via JS -->
+  </div>
+
+  <button onclick="concluirFormularioEconomia()" style="margin-top: 15px; background-color: #28a745;">Concluir Formulário</button>
+  <button onclick="fecharFormularioEconomia()" style="background-color: #ccc; color: black; margin-top:10px;">Cancelar</button>
+</div>
+
+<div class="container">
+  <div class="icons-container">
+    <div class="help-icon" onclick="abrirAjuda()">
+      <i class="fas fa-question-circle"></i>
+    </div>
+    <a class="pdf-icon" href="https://www.cemig.com.br/wp-content/uploads/2020/10/POTENCIA-MEDIA-DE-APARELHOS-RESIDENCIAIS-E-COMERCIAIS.pdf" target="_blank">
+      <i class="fas fa-file-pdf"></i> PDF
+    </a>
+  </div>
+
+  <h2>Diagrama de Carga</h2>
+  <label for="nome">Nome do Equipamento:</label>
+  <input list="equipamentosLista" id="nome" placeholder="Ex: Geladeira" onchange="preencherPotencia()" oninput="verificarNovoEquipamento()">
+  
+  <datalist id="equipamentosLista">
+    {% for nome, potencia in equipamentos %}
+      <option value="{{ nome }}" data-potencia="{{ potencia }}"></option>
+    {% endfor %}
+  </datalist>
+  <div id="adminPanel" style="display:none;">
+    <h4>Equipamentos no Banco</h4>
+    <ul id="listaEquipamentosAdmin" style="list-style:none; padding:0;"></ul>
+  </div>
+  
+  <!-- Botão pequeno para adicionar novo equipamento ao banco -->
+  <div id="botaoNovoEquipamento" style="display:none; margin-top: 10px;">
+    <button onclick="adicionarEquipamentoManual()" style="background-color:#28a745;color:white;padding:8px;width:100%; font-size: 14px;">
+      Adicionar "<span id="nomeNovoEquip"></span>" ao banco
+    </button>
+  </div>
+<!-- Lista oculta, que só será preenchida quando o modo admin for ativado -->
+<div id="adminPanel" style="display:none;">
+  <h4>Equipamentos no Banco</h4>
+  <ul id="listaEquipamentosAdmin" style="list-style:none; padding:0; margin:10px 0;"></ul>
+</div>
+
+
+
+  
+  <label for="potencia">Potência (W):</label>
+  <input type="number" id="potencia" placeholder="Ex: 1500">
+
+  <label for="quantidade">Quantidade:</label>
+  <input type="number" id="quantidade" placeholder="Ex: 1">
+
+  <label for="tipoEquipamento">Tipo de Equipamento:</label>
+  <select id="tipoEquipamento">
+    <option value="iluminacao">Iluminação</option>
+    <option value="tue">TUE (Tomada de Uso Específico)</option>
+    <option value="tug">TUG (Tomada de Uso Geral)</option>
+  </select>
+
+  <label for="horaInicio">Hora de Início:</label>
+  <input type="number" id="horaInicio" min="0" max="23" placeholder="Ex: 8">
+
+  <label for="horaFim">Hora de Término:</label>
+  <input type="number" id="horaFim" min="0" max="23" placeholder="Ex: 18">
+
+  <label>
+    <input type="checkbox" id="funciona24h" onclick="alternarHorario()"> Funciona 24h
+  </label>
+
+  <button onclick="adicionarEquipamento()">Adicionar Equipamento</button>
+
+  <div class="equipamentos" id="equipamentos"></div>
+  <button onclick="atualizarGraficos()">Atualizar Gráficos</button>
+
+  <h3>Consumo por Hora</h3>
+  <canvas id="graficoHora" width="400" height="200"></canvas>
+  
+  <h3>Consumo Diário no Mês</h3>
+  <canvas id="graficoMes" width="400" height="200"></canvas>
+</div>
+
+<div class="graficos-container" id="graficosContainer">
+  <h3>Consumo por Tipo de Equipamento</h3>
+  <h4>Iluminação</h4>
+  <canvas id="graficoIluminacao" width="400" height="200"></canvas>
+  
+  <h4>TUE (Tomada de Uso Específico)</h4>
+  <canvas id="graficoTUE" width="400" height="200"></canvas>
+
+  <h4>TUG (Tomada de Uso Geral)</h4>
+  <canvas id="graficoTUG" width="400" height="200"></canvas>
+</div>
+
+<button class="botao-graficos" onclick="toggleGraficos()">📊</button>
+<button class="botao-zerar" onclick="zerarTudo()">Zerar Tudo</button>
+
+<script>
+   const equipamentosStandby = ["Televisão", "Microondas", "Fogão", "Impressora", "Monitor", "Videogame"];
+let economiaFormDados = {};
+
+function abrirFormularioEconomia() {
+  const container = document.getElementById("listaStandbyEquipamentos");
+  container.innerHTML = "";
+  equipamentosStandby.forEach(nome => {
+    const id = nome.toLowerCase().replace(/\s/g, "_");
+
+    const div = document.createElement("div");
+    div.innerHTML = `
+      <label><input type="checkbox" onchange="toggleQuantidade('${id}')" id="check_${id}"> ${nome}</label>
+      <input type="number" id="qtd_${id}" placeholder="Qtd" style="display:none; width:60px; margin-left:10px;">
+    `;
+    container.appendChild(div);
+  });
+
+  document.getElementById("formularioEconomiaModal").style.display = "block";
+}
+
+function toggleQuantidade(id) {
+  const input = document.getElementById(`qtd_${id}`);
+  input.style.display = document.getElementById(`check_${id}`).checked ? "inline-block" : "none";
+}
+
+function fecharFormularioEconomia() {
+  document.getElementById("formularioEconomiaModal").style.display = "none";
+}
+
+function concluirFormularioEconomia() {
+  const consumoConta = parseFloat(document.getElementById("consumoConta").value);
+  if (isNaN(consumoConta) || consumoConta <= 0) {
+    alert("Informe o consumo da conta de energia corretamente.");
+    return;
+  }
+
+  const standby = {};
+  equipamentosStandby.forEach(nome => {
+    const id = nome.toLowerCase().replace(/\s/g, "_");
+    if (document.getElementById(`check_${id}`).checked) {
+      const qtd = parseInt(document.getElementById(`qtd_${id}`).value);
+      if (isNaN(qtd) || qtd <= 0) {
+        alert(`Informe a quantidade para ${nome}.`);
+        return;
+      }
+      standby[nome] = qtd;
+    }
+  });
+
+  economiaFormDados = {
+    consumoConta: consumoConta,
+    standbyEquipamentos: standby
+  };
+
+  fecharFormularioEconomia();
+  alert("Formulário salvo com sucesso! Os dados serão incluídos no PDF.");
+}
+    function preencherPotencia() {
+    const nomeInput = document.getElementById('nome');
+    const potenciaInput = document.getElementById('potencia');
+    const options = document.getElementById('equipamentosLista').options;
+    
+    // Procura pelo equipamento selecionado na lista
+    for (let i = 0; i < options.length; i++) {
+      if (options[i].value === nomeInput.value) {
+        // Preenche a potência apenas se encontrou o equipamento na lista
+        potenciaInput.value = options[i].getAttribute('data-potencia');
+        break;
+      }
+    }
+    // Se não encontrar, mantém o valor que o usuário digitou manualmente
+  }
+  function abrirAjuda() {
+    alert("Aqui você pode adicionar equipamentos e visualizar o consumo de energia por hora e por dia. Preencha os campos com o nome, potência e horários de funcionamento dos equipamentos. Use o gráfico para analisar os dados.");
+  }
+
+  let equipamentos = [];
+  let consumoHorario = new Array(24).fill(0);
+  let consumoDiario = new Array(30).fill(0);
+  
+  const consumoIluminacao = new Array(24).fill(0);
+  const consumoTUE = new Array(24).fill(0);
+  const consumoTUG = new Array(24).fill(0);
+
+  // Variáveis para os gráficos
+  let cargaHoraChart, cargaMesChart;
+  let cargaIluminacaoChart, cargaTUEChart, cargaTUGChart;
+
+  function alternarHorario() {
+    const is24h = document.getElementById('funciona24h').checked;
+    document.getElementById('horaInicio').disabled = is24h;
+    document.getElementById('horaFim').disabled = is24h;
+  }
+
+  function adicionarEquipamento() {
+    const nome = document.getElementById('nome').value;
+    const potencia = parseFloat(document.getElementById('potencia').value);
+    const quantidade = parseInt(document.getElementById('quantidade').value);
+    const tipoEquipamento = document.getElementById('tipoEquipamento').value;
+    const funciona24h = document.getElementById('funciona24h').checked;
+
+    let horaInicio, horaFim;
+    if (funciona24h) {
+      horaInicio = 0;
+      horaFim = 23;
+    } else {
+      horaInicio = parseInt(document.getElementById('horaInicio').value);
+      horaFim = parseInt(document.getElementById('horaFim').value);
+      if (isNaN(horaInicio) || isNaN(horaFim) || horaInicio > horaFim) {
+        alert("Preencha os horários corretamente.");
+        return;
+      }
+    }
+
+    if (nome && potencia && quantidade && tipoEquipamento) {
+      const consumoHora = (potencia * quantidade) / 1000; // kWh por hora
+
+      equipamentos.push({ nome, potencia, quantidade, tipoEquipamento, horaInicio, horaFim, consumoHora });
+
+      document.getElementById('nome').value = '';
+      document.getElementById('potencia').value = '';
+      document.getElementById('quantidade').value = '';
+      document.getElementById('horaInicio').value = '';
+      document.getElementById('horaFim').value = '';
+      document.getElementById('funciona24h').checked = false;
+      document.getElementById('tipoEquipamento').value = 'iluminacao';
+      alternarHorario();
+
+      atualizarEquipamentos();
+      atualizarGraficos();
+    } else {
+      alert("Preencha todos os campos corretamente.");
+    }
+  }
+
+  function atualizarEquipamentos() {
+    const listaEquipamentos = document.getElementById('equipamentos');
+    listaEquipamentos.innerHTML = '';
+    equipamentos.forEach(equip => {
+      const horarioTexto = equip.horaInicio === 0 && equip.horaFim === 23 ? "24h" : `${equip.horaInicio}h - ${equip.horaFim}h`;
+      const tipoTexto = equip.tipoEquipamento === 'iluminacao' ? "Iluminação" :
+                        equip.tipoEquipamento === 'tue' ? "TUE (Tomada de Uso Específico)" : 
+                        "TUG (Tomada de Uso Geral)";
+      const item = document.createElement('div');
+      item.className = 'equipamento-item';
+      item.innerHTML = `${equip.nome} - ${equip.potencia}W x ${equip.quantidade} (${tipoTexto}, ${horarioTexto})`;
+      listaEquipamentos.appendChild(item);
+    });
+  }
+
+  function calcularConsumo() {
+    consumoHorario.fill(0);
+    consumoDiario.fill(0);
+    consumoIluminacao.fill(0);
+    consumoTUE.fill(0);
+    consumoTUG.fill(0);
+
+    equipamentos.forEach(equip => {
+      const horasFuncionamento = equip.horaFim - equip.horaInicio + 1;
+      
+      for (let hora = equip.horaInicio; hora <= equip.horaFim; hora++) {
+        consumoHorario[hora] += equip.consumoHora;
+
+        switch(equip.tipoEquipamento) {
+          case 'iluminacao':
+            consumoIluminacao[hora] += equip.consumoHora;
+            break;
+          case 'tue':
+            consumoTUE[hora] += equip.consumoHora;
+            break;
+          case 'tug':
+            consumoTUG[hora] += equip.consumoHora;
+            break;
+        }
+      }
+
+      const consumoDiarioEquip = equip.consumoHora * horasFuncionamento;
+      for (let dia = 0; dia < 30; dia++) {
+        consumoDiario[dia] += consumoDiarioEquip;
+      }
+    });
+  }
+
+  function atualizarGraficos() {
+    calcularConsumo();
+
+    cargaHoraChart.data.datasets[0].data = consumoHorario;
+    cargaHoraChart.update();
+    
+    cargaMesChart.data.datasets[0].data = consumoDiario;
+    cargaMesChart.update();
+
+    cargaIluminacaoChart.data.datasets[0].data = consumoIluminacao;
+    cargaIluminacaoChart.update();
+
+    cargaTUEChart.data.datasets[0].data = consumoTUE;
+    cargaTUEChart.update();
+
+    cargaTUGChart.data.datasets[0].data = consumoTUG;
+    cargaTUGChart.update();
+  }
+
+  function toggleGraficos() {
+    const container = document.getElementById('graficosContainer');
+    container.style.display = container.style.display === 'block' ? 'none' : 'block';
+  }
+
+  function zerarTudo() {
+    if (confirm("Tem certeza que deseja apagar todos os dados e reiniciar?")) {
+      equipamentos = [];
+      document.getElementById('equipamentos').innerHTML = '';
+      
+      consumoHorario.fill(0);
+      consumoDiario.fill(0);
+      consumoIluminacao.fill(0);
+      consumoTUE.fill(0);
+      consumoTUG.fill(0);
+      
+      cargaHoraChart.data.datasets[0].data = consumoHorario;
+      cargaHoraChart.update();
+      
+      cargaMesChart.data.datasets[0].data = consumoDiario;
+      cargaMesChart.update();
+      
+      cargaIluminacaoChart.data.datasets[0].data = consumoIluminacao;
+      cargaIluminacaoChart.update();
+      
+      cargaTUEChart.data.datasets[0].data = consumoTUE;
+      cargaTUEChart.update();
+      
+      cargaTUGChart.data.datasets[0].data = consumoTUG;
+      cargaTUGChart.update();
+      
+      document.getElementById('nome').value = '';
+      document.getElementById('potencia').value = '';
+      document.getElementById('quantidade').value = '';
+      document.getElementById('horaInicio').value = '';
+      document.getElementById('horaFim').value = '';
+      document.getElementById('funciona24h').checked = false;
+      document.getElementById('tipoEquipamento').value = 'iluminacao';
+      alternarHorario();
+    }
+  }
+
+  window.onload = function() {
+    const ctxHora = document.getElementById('graficoHora').getContext('2d');
+    cargaHoraChart = new Chart(ctxHora, {
+      type: 'line',
+      data: { 
+        labels: [...Array(24).keys()].map(h => h + 'h'), 
+        datasets: [{ 
+          label: "Consumo por Hora (kWh)", 
+          data: consumoHorario, 
+          borderColor: "#007bff", 
+          backgroundColor: "rgba(0, 123, 255, 0.2)", 
+          borderWidth: 2, 
+          fill: true 
+        }] 
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { 
+            title: { display: true, text: 'Horas do Dia' } 
+          },
+          y: { 
+            title: { display: true, text: 'Consumo (kWh)' },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    const ctxMes = document.getElementById('graficoMes').getContext('2d');
+    cargaMesChart = new Chart(ctxMes, {
+      type: 'line',
+      data: { 
+        labels: [...Array(30).keys()].map(d => 'Dia ' + (d + 1)), 
+        datasets: [{ 
+          label: "Consumo Diário (kWh)", 
+          data: consumoDiario, 
+          borderColor: "#28a745", 
+          backgroundColor: "rgba(40, 167, 69, 0.2)", 
+          borderWidth: 2, 
+          fill: true 
+        }] 
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { 
+            title: { display: true, text: 'Dias do Mês' } 
+          },
+          y: { 
+            title: { display: true, text: 'Consumo (kWh)' },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    const ctxIluminacao = document.getElementById('graficoIluminacao').getContext('2d');
+    cargaIluminacaoChart = new Chart(ctxIluminacao, {
+      type: 'line',
+      data: { 
+        labels: [...Array(24).keys()].map(h => h + 'h'), 
+        datasets: [{ 
+          label: "Consumo de Iluminação (kWh)", 
+          data: consumoIluminacao, 
+          borderColor: "#ffc107", 
+          backgroundColor: "rgba(255, 193, 7, 0.2)", 
+          borderWidth: 2, 
+          fill: true 
+        }] 
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { 
+            title: { display: true, text: 'Horas do Dia' } 
+          },
+          y: { 
+            title: { display: true, text: 'Consumo (kWh)' },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    const ctxTUE = document.getElementById('graficoTUE').getContext('2d');
+    cargaTUEChart = new Chart(ctxTUE, {
+      type: 'line',
+      data: { 
+        labels: [...Array(24).keys()].map(h => h + 'h'), 
+        datasets: [{ 
+          label: "Consumo de TUE (kWh)", 
+          data: consumoTUE, 
+          borderColor: "#dc3545", 
+          backgroundColor: "rgba(220, 53, 69, 0.2)", 
+          borderWidth: 2, 
+          fill: true 
+        }] 
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { 
+            title: { display: true, text: 'Horas do Dia' } 
+          },
+          y: { 
+            title: { display: true, text: 'Consumo (kWh)' },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    const ctxTUG = document.getElementById('graficoTUG').getContext('2d');
+    cargaTUGChart = new Chart(ctxTUG, {
+      type: 'line',
+      data: { 
+        labels: [...Array(24).keys()].map(h => h + 'h'), 
+        datasets: [{ 
+          label: "Consumo de TUG (kWh)", 
+          data: consumoTUG, 
+          borderColor: "#17a2b8", 
+          backgroundColor: "rgba(23, 162, 184, 0.2)", 
+          borderWidth: 2, 
+          fill: true 
+        }] 
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { 
+            title: { display: true, text: 'Horas do Dia' } 
+          },
+          y: { 
+            title: { display: true, text: 'Consumo (kWh)' },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  };
+  function verificarNovoEquipamento() {
+  const nome = document.getElementById('nome').value;
+  const datalist = document.getElementById('equipamentosLista');
+  const options = Array.from(datalist.options).map(opt => opt.value);
+  
+  if (nome && !options.includes(nome)) {
+    document.getElementById('botaoNovoEquipamento').style.display = 'block';
+    document.getElementById('nomeNovoEquip').innerText = nome;
+  } else {
+    document.getElementById('botaoNovoEquipamento').style.display = 'none';
+  }
+}
+
+function adicionarEquipamentoManual() {
+  const nome = document.getElementById('nome').value;
+  const potencia = prompt(`Qual a potência (W) do equipamento "${nome}"?`);
+  
+  if (potencia && !isNaN(potencia)) {
+    fetch('/adicionar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, potencia })
+    })
+    .then(res => res.json())
+    .then(data => {
+      alert(data.mensagem || 'Equipamento adicionado!');
+      location.reload(); // recarrega pra atualizar a lista
+    });
+  } else {
+    alert("Valor de potência inválido.");
+  }
+}
+function ativarModoAdmin() {
+  const senha = prompt("Digite a senha de administrador:");
+  if (senha === "1234") {
+    alert("Modo Admin ativado! Você pode excluir equipamentos.");
+
+    fetch('/equipamentos')
+      .then(response => response.json())
+      .then(equipamentos => {
+        const lista = document.getElementById('listaEquipamentosAdmin');
+        lista.innerHTML = ''; // Limpa a lista atual
+        document.getElementById('adminPanel').style.display = 'block'; // Mostra a área da lista
+
+        equipamentos.forEach(([nome, potencia]) => {
+          const li = document.createElement('li');
+          li.textContent = `${nome} - ${potencia}W`;
+
+          const btn = document.createElement('button');
+          btn.innerText = '❌';
+          btn.style.marginLeft = '10px';
+          btn.style.cursor = 'pointer';
+          btn.style.background = 'none';
+          btn.style.border = 'none';
+          btn.style.color = 'red';
+          btn.style.fontSize = '14px';
+
+          btn.onclick = () => {
+            if (confirm(`Excluir "${nome}" do banco?`)) {
+              fetch('/excluir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome: nome, senha: '1234' })
+              })
+              .then(res => {
+                if (res.status === 403) {
+                  alert("Senha incorreta. Acesso negado.");
+                  return;
+                }
+                return res.json();
+              })
+              .then(data => {
+                if (data?.mensagem) {
+                  alert(data.mensagem);
+                  location.reload();
+                }
+              });
+            }
+          };
+
+          li.appendChild(btn);
+          lista.appendChild(li);
+        });
+      });
+  } else {
+    alert("Senha incorreta.");
+  }
+}
+function abrirModalTarifa() {
+  document.getElementById("modalTarifa").style.display = "block";
+}
+
+function fecharModalTarifa() {
+  document.getElementById("modalTarifa").style.display = "none";
+}
+
+function atualizarOpcoesPotencia() {
+  const pais = document.getElementById("selectPais").value;
+  const divPotencia = document.getElementById("divPotencia");
+  divPotencia.style.display = pais === "portugal" ? "block" : "none";
+}
+
+function confirmarTarifa() {
+  const pais = document.getElementById("selectPais").value;
+  const potencia = pais === "portugal" ? document.getElementById("selectPotencia").value : null;
+
+  fecharModalTarifa();
+  gerarRelatorioPDF(pais, potencia);
+}
+function calcularEconomiaTotal(consumoConta, standbyEquipamentos) {
+  const reducaoPorEquipamento = {
+    "Televisão": 0.7714,
+    "Fogão": 0.7419,
+    "Microondas": 0.8462,
+    "Notebook": 0.4667,
+    "Monitor": 0.4667,
+    "Videogame": 0 // valor negativo tratado como 0
+  };
+
+  // 🔧 Você vai preencher esses valores:
+  const horasUsoMensal = {
+    "Televisão": 570,     
+    "Fogão": 600,
+    "Microondas": 710,
+    "Notebook": 630,
+    "Monitor": 630,
+    "Videogame": 300
+  };
+
+  const correnteStandby = {
+    "Televisão": 0.035,   // em amperes – ⬅️ substitua
+    "Fogão": 0.031,
+    "Microondas": 0.052,
+    "Notebook": 0.015,
+    "Monitor": 0.089,
+    "Videogame": 0.003
+  };
+
+  const tensao = 127; // tensão fixa da simulação (em volts)
+  let economiaKWh = 0;
+
+  for (let nome in standbyEquipamentos) {
+    const qtd = standbyEquipamentos[nome] || 0;
+    const horas = horasUsoMensal[nome] || 0;
+    const corrente = correnteStandby[nome] || 0;
+    const reducao = reducaoPorEquipamento[nome] || 0;
+
+    const consumoPorEquipamento = corrente * tensao * horas / 1000;
+    const economiaPorEquipamento = consumoPorEquipamento * reducao;
+
+    economiaKWh += economiaPorEquipamento * qtd;
+  }
+
+  const novoConsumo = consumoConta - economiaKWh;
+  const percentualReducao = (economiaKWh / consumoConta) * 100;
+
+  return {
+    consumoConta: consumoConta,
+    economiaKWh: economiaKWh.toFixed(2),
+    novoConsumo: novoConsumo.toFixed(2),
+    percentualReducao: percentualReducao.toFixed(2)
+    
+  };
+}
+function mostrarPotencias() {
+  const pais = document.getElementById('pais').value;
+  const potenciaDiv = document.getElementById('potenciaContainer');
+  if (pais === "portugal") {
+    potenciaDiv.style.display = 'block';
+  } else {
+    potenciaDiv.style.display = 'none';
+  }
+}
+function perguntarPais() {
+  const pais = prompt("De qual país você está gerando o relatório? (Digite 'Brasil' ou 'Portugal')").toLowerCase();
+
+  if (pais === "portugal") {
+    // Abre uma seleção com as potências disponíveis
+    const opcoes = ["classe abaixo de 20,7Kva", "1.15", "2.3", "3.45", "4.6","5.75","6.9","10.35","13.8","17.25","20.7" ];
+  
+    let menu = "Selecione a potência contratada (em kVA):\n";
+    opcoes.forEach((op, index) => {
+      menu += `${index + 1}) ${op} kVA\n`;
+    });
+
+    const escolha = prompt(menu);
+    const index = parseInt(escolha) - 1;
+
+    if (index >= 0 && index < opcoes.length) {
+      const potenciaEscolhida = opcoes[index];
+      gerarRelatorioPDF(pais, potenciaEscolhida);
+    } else {
+      alert("Potência inválida.");
+    }
+
+  } else if (pais === "brasil") {
+    gerarRelatorioPDF(pais);
+  } else {
+    alert("País inválido. Tente novamente.");
+  }
+}
+
+function gerarRelatorioPDF(pais = "brasil", potenciaContratada = null) {
+  const graficosContainer = document.getElementById("graficosContainer");
+  graficosContainer.classList.add("force-visible");
+
+  requestAnimationFrame(() => {
+    const canvasHora = document.getElementById("graficoHora").toDataURL();
+    const canvasMes = document.getElementById("graficoMes").toDataURL();
+    const canvasIluminacao = document.getElementById("graficoIluminacao").toDataURL();
+    const canvasTUE = document.getElementById("graficoTUE").toDataURL();
+    const canvasTUG = document.getElementById("graficoTUG").toDataURL();
+
+    graficosContainer.classList.remove("force-visible");
+
+    const economia = calcularEconomiaTotal(
+      economiaFormDados.consumoConta,
+      economiaFormDados.standbyEquipamentos
+    );
+
+    const dados = {
+      equipamentos: equipamentos,
+      consumoHora: consumoHorario,
+      consumoMes: consumoDiario,
+      consumoPorTipo: {
+        iluminacao: consumoIluminacao,
+        tue: consumoTUE,
+        tug: consumoTUG
+      },
+      economia: economia,
+      tarifaPais: pais,
+      potenciaContratada: potenciaContratada,
+      graficos: {
+        graficoHora: canvasHora,
+        graficoMes: canvasMes,
+        iluminacao: canvasIluminacao,
+        tue: canvasTUE,
+        tug: canvasTUG
+      }
+    };
+
+
+    console.log("Enviando ao backend:", dados);
+fetch("/gerar-pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dados)
+    })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "relatorio_consumo.pdf";
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(err => {
+        alert("Erro ao gerar o PDF: " + err.message);
+      });
+  });
+}
+</script>
+</body>
+</html>
+<div style="text-align:right;">
+  <button onclick="ativarModoAdmin()" style="background:none;border:none;cursor:pointer;font-size:16px;color:#333;">🔒 Acesso Admin</button>
+</div>
